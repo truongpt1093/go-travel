@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - claude/travel-expense-manager-01CRSrpYfaXrUymc2hvS6WNM
   workflow_dispatch:
 
 permissions:
