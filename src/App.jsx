@@ -1447,7 +1447,7 @@ const DashboardTab = () => {
 // ============================================================================
 
 const SettingsTab = () => {
-  const { settings, spreadsheetId, updateSettings, disconnectGoogle, darkMode, setDarkMode } = useApp();
+  const { settings, spreadsheetId, updateSettings, disconnectGoogle, darkMode, setDarkMode, showToast } = useApp();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     tripName: '',
@@ -1582,6 +1582,53 @@ const SettingsTab = () => {
         </div>
       </div>
 
+      {/* Share Link */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-6 shadow-md space-y-4">
+        <div className="flex items-center gap-2">
+          <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Chia sẻ với Team</h3>
+        </div>
+        <div>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            Chia sẻ link này để team members có thể truy cập và chỉnh sửa spreadsheet của bạn:
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={`${window.location.origin}${window.location.pathname}?sheet=${spreadsheetId}`}
+              className="flex-1 px-4 py-2 bg-white dark:bg-gray-700 border border-blue-300 dark:border-blue-600 rounded-lg text-sm text-gray-900 dark:text-white font-mono"
+              onClick={(e) => e.target.select()}
+            />
+            <button
+              onClick={() => {
+                const shareUrl = `${window.location.origin}${window.location.pathname}?sheet=${spreadsheetId}`;
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                  showToast('Đã copy link share!', 'success');
+                }).catch(() => {
+                  showToast('Không thể copy. Vui lòng copy thủ công.', 'error');
+                });
+              }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2 whitespace-nowrap"
+            >
+              <Download className="w-4 h-4" />
+              Copy Link
+            </button>
+          </div>
+          <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              <strong>📝 Lưu ý:</strong> Để team members có thể chỉnh sửa, bạn cần:
+            </p>
+            <ol className="text-xs text-gray-600 dark:text-gray-400 list-decimal list-inside mt-2 space-y-1">
+              <li>Mở <a href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google Sheets</a></li>
+              <li>Click <strong>Share</strong> (góc trên bên phải)</li>
+              <li>Thêm email của team members với quyền <strong>Editor</strong></li>
+              <li>Hoặc bật <strong>&quot;Anyone with the link can edit&quot;</strong></li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
       {/* Appearance */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Giao diện</h3>
@@ -1635,7 +1682,16 @@ const SettingsTab = () => {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [spreadsheetId, setSpreadsheetId] = useState(localStorage.getItem('spreadsheetId') || '');
+  const [spreadsheetId, setSpreadsheetId] = useState(() => {
+    // Check URL parameters first, then localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const sheetIdFromUrl = urlParams.get('sheet');
+    if (sheetIdFromUrl) {
+      localStorage.setItem('spreadsheetId', sheetIdFromUrl);
+      return sheetIdFromUrl;
+    }
+    return localStorage.getItem('spreadsheetId') || '';
+  });
   const [activeTab, setActiveTab] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
@@ -1648,6 +1704,19 @@ function App() {
   const [toast, setToast] = useState(null);
 
   const [sheetsAPI] = useState(() => new GoogleSheetsAPI());
+
+  // Check for shared spreadsheet in URL on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sheetIdFromUrl = urlParams.get('sheet');
+    if (sheetIdFromUrl && sheetIdFromUrl !== spreadsheetId) {
+      setSpreadsheetId(sheetIdFromUrl);
+      localStorage.setItem('spreadsheetId', sheetIdFromUrl);
+      showToast('Đã load spreadsheet từ link share!', 'success');
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // Apply dark mode
   useEffect(() => {
