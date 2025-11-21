@@ -103,6 +103,26 @@ npm run dev
 4. Chọn **Tạo spreadsheet mới** hoặc **Sử dụng spreadsheet có sẵn**
 5. Bắt đầu thêm thành viên và chi phí!
 
+## 👥 Làm việc Nhóm
+
+### Share với Team Members
+
+**Owner** (người tạo spreadsheet):
+1. Vào tab **Settings** → **"Chia sẻ với Team"**
+2. Click **"Copy Link"**
+3. Share Google Sheets với team (Editor permission)
+4. Gửi link cho members
+
+**Members** (người được share):
+1. Click vào link từ owner
+2. Đăng nhập Google
+3. Tự động kết nối vào spreadsheet của owner
+4. Bắt đầu sử dụng!
+
+📖 Xem hướng dẫn chi tiết trong [COLLABORATION.md](./COLLABORATION.md)
+
+---
+
 ## 📱 Cấu trúc Google Sheets
 
 Ứng dụng tự động tạo 1 spreadsheet với 3 sheets:
