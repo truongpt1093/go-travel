@@ -223,6 +223,38 @@ src/
 - Clear localStorage
 - Refresh page
 
+## 🌐 Deploy lên Production
+
+### GitHub Pages (Miễn phí)
+
+Ứng dụng đã được cấu hình sẵn để deploy lên GitHub Pages:
+
+**Live URL**: https://truongpt1093.github.io/go-travel/
+
+#### Cách deploy:
+
+1. **Enable GitHub Pages**:
+   - Vào Settings → Pages
+   - Source: chọn "GitHub Actions"
+
+2. **Push code lên main branch**:
+   ```bash
+   git push origin main
+   ```
+
+3. **Đợi GitHub Actions build & deploy** (~2-3 phút)
+
+4. **Cập nhật Google OAuth**:
+   - Thêm `https://truongpt1093.github.io` vào Authorized JavaScript origins
+
+📖 Xem chi tiết trong [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+### Các nền tảng khác
+
+- **Vercel**: Import từ GitHub → Auto deploy
+- **Netlify**: Drag & drop folder `dist` sau khi build
+- **Cloudflare Pages**: Connect GitHub repo
+
 ## 📝 Roadmap
 
 - [ ] Export data as CSV/JSON
