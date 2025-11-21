@@ -14,6 +14,12 @@ import {
 // GOOGLE SHEETS API CONFIGURATION & HELPERS
 // ============================================================================
 
+// Pre-configured values - change these to customize your deployment
+const DEFAULT_CONFIG = {
+  CLIENT_ID: '876769626776-p0ams39s5s6q58f9a2kv8k9ovtr5jng1.apps.googleusercontent.com',
+  SPREADSHEET_ID: '1xi_TjEGThNhKk20ybz3uDCcsaNGQPeKAmVzzKIIfHSI',
+};
+
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
 
@@ -1469,7 +1475,7 @@ const SettingsTab = () => {
   });
 
   // OAuth setup states
-  const [clientId, setClientId] = useState(localStorage.getItem('googleClientId') || '');
+  const [clientId, setClientId] = useState(localStorage.getItem('googleClientId') || DEFAULT_CONFIG.CLIENT_ID || '');
   const [showOAuthSetup, setShowOAuthSetup] = useState(false);
 
   // Spreadsheet selection states
@@ -1899,16 +1905,27 @@ const SettingsTab = () => {
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [spreadsheetId, setSpreadsheetId] = useState(() => {
-    // Check URL parameters first, then localStorage
+    // Priority: URL param > localStorage > DEFAULT_CONFIG
     const urlParams = new URLSearchParams(window.location.search);
     const sheetIdFromUrl = urlParams.get('sheet');
     if (sheetIdFromUrl) {
       localStorage.setItem('spreadsheetId', sheetIdFromUrl);
       return sheetIdFromUrl;
     }
-    return localStorage.getItem('spreadsheetId') || '';
+    const savedId = localStorage.getItem('spreadsheetId');
+    if (savedId) return savedId;
+
+    // Use pre-configured default
+    if (DEFAULT_CONFIG.SPREADSHEET_ID) {
+      localStorage.setItem('spreadsheetId', DEFAULT_CONFIG.SPREADSHEET_ID);
+      return DEFAULT_CONFIG.SPREADSHEET_ID;
+    }
+    return '';
   });
-  const [activeTab, setActiveTab] = useState('settings'); // Default to settings for initial setup
+  const [activeTab, setActiveTab] = useState(() => {
+    // If pre-configured, start at dashboard; otherwise start at settings
+    return (DEFAULT_CONFIG.CLIENT_ID && DEFAULT_CONFIG.SPREADSHEET_ID) ? 'dashboard' : 'settings';
+  });
   const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
   const [members, setMembers] = useState([]);
@@ -1936,16 +1953,20 @@ function App() {
 
   // Auto-initialize Google APIs if clientId exists
   useEffect(() => {
-    const savedClientId = localStorage.getItem('googleClientId');
+    const savedClientId = localStorage.getItem('googleClientId') || DEFAULT_CONFIG.CLIENT_ID;
     if (savedClientId && !isAuthenticated) {
+      // Save to localStorage if using default
+      if (!localStorage.getItem('googleClientId') && DEFAULT_CONFIG.CLIENT_ID) {
+        localStorage.setItem('googleClientId', DEFAULT_CONFIG.CLIENT_ID);
+      }
       handleSetupComplete(savedClientId);
     }
   }, []);
 
-  // Auto-switch to dashboard when both authenticated and spreadsheet is connected
+  // Auto-switch to dashboard when both authenticated and spreadsheet is connected (only if not pre-configured)
   useEffect(() => {
-    if (isAuthenticated && spreadsheetId && activeTab === 'settings') {
-      // Only auto-switch if user is currently on settings tab
+    if (isAuthenticated && spreadsheetId && activeTab === 'settings' && !DEFAULT_CONFIG.CLIENT_ID) {
+      // Only auto-switch if user is currently on settings tab and NOT using pre-configured setup
       setActiveTab('dashboard');
     }
   }, [isAuthenticated, spreadsheetId]);
