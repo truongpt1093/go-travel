@@ -1447,13 +1447,36 @@ const DashboardTab = () => {
 // ============================================================================
 
 const SettingsTab = () => {
-  const { settings, spreadsheetId, updateSettings, disconnectGoogle, darkMode, setDarkMode, showToast } = useApp();
+  const {
+    settings,
+    spreadsheetId,
+    updateSettings,
+    disconnectGoogle,
+    darkMode,
+    setDarkMode,
+    showToast,
+    isAuthenticated,
+    handleSetupComplete,
+    handleSpreadsheetSelect,
+    sheetsAPI,
+  } = useApp();
+
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     tripName: '',
     currency: 'VND',
     startDate: '',
   });
+
+  // OAuth setup states
+  const [clientId, setClientId] = useState(localStorage.getItem('googleClientId') || '');
+  const [showOAuthSetup, setShowOAuthSetup] = useState(false);
+
+  // Spreadsheet selection states
+  const [showSpreadsheetSetup, setShowSpreadsheetSetup] = useState(false);
+  const [newSpreadsheetId, setNewSpreadsheetId] = useState('');
+  const [newSpreadsheetName, setNewSpreadsheetName] = useState('Travel Expenses');
+  const [isCreatingSpreadsheet, setIsCreatingSpreadsheet] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -1470,119 +1493,309 @@ const SettingsTab = () => {
     setIsEditing(false);
   };
 
+  const handleConnectGoogle = async () => {
+    if (!clientId.trim()) {
+      showToast('Vui lòng nhập Google Client ID!', 'error');
+      return;
+    }
+    localStorage.setItem('googleClientId', clientId.trim());
+    await handleSetupComplete(clientId.trim());
+    setShowOAuthSetup(false);
+  };
+
+  const handleSelectExistingSpreadsheet = () => {
+    if (!newSpreadsheetId.trim()) {
+      showToast('Vui lòng nhập Spreadsheet ID!', 'error');
+      return;
+    }
+    handleSpreadsheetSelect(newSpreadsheetId.trim());
+    setShowSpreadsheetSetup(false);
+    setNewSpreadsheetId('');
+    showToast('Đã chọn spreadsheet!', 'success');
+  };
+
+  const handleCreateNewSpreadsheet = async () => {
+    if (!isAuthenticated) {
+      showToast('Vui lòng kết nối Google trước!', 'error');
+      return;
+    }
+
+    setIsCreatingSpreadsheet(true);
+    try {
+      const spreadsheet = await sheetsAPI.createSpreadsheet(newSpreadsheetName);
+      await sheetsAPI.initializeSheets(spreadsheet.spreadsheetId);
+      handleSpreadsheetSelect(spreadsheet.spreadsheetId);
+      setShowSpreadsheetSetup(false);
+      setNewSpreadsheetName('Travel Expenses');
+      showToast('Đã tạo spreadsheet mới!', 'success');
+    } catch (error) {
+      showToast('Lỗi khi tạo spreadsheet: ' + error.message, 'error');
+    } finally {
+      setIsCreatingSpreadsheet(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Cài đặt</h2>
 
-      {/* Trip Settings */}
+      {/* Google OAuth Connection */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Thông tin chuyến đi</h3>
-          {!isEditing ? (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Kết nối Google</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {isAuthenticated ? (
+                <span className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                  <CheckCircle className="w-4 h-4" />
+                  Đã kết nối
+                </span>
+              ) : (
+                <span className="text-orange-600 dark:text-orange-400">Chưa kết nối</span>
+              )}
+            </p>
+          </div>
+          {!isAuthenticated && (
             <button
-              onClick={() => setIsEditing(true)}
-              className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
+              onClick={() => setShowOAuthSetup(!showOAuthSetup)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
             >
-              <Edit2 className="w-4 h-4" />
-              Chỉnh sửa
+              <ExternalLink className="w-4 h-4" />
+              {showOAuthSetup ? 'Đóng' : 'Kết nối'}
             </button>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={handleSave}
-                className="text-green-600 hover:text-green-700 flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                Lưu
-              </button>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="text-gray-600 hover:text-gray-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
           )}
         </div>
 
-        {isEditing ? (
-          <div className="space-y-4">
+        {showOAuthSetup && !isAuthenticated && (
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Hướng dẫn cấu hình</h4>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                <li>Truy cập <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Google Cloud Console</a></li>
+                <li>Tạo project → Enable &quot;Google Sheets API&quot;</li>
+                <li>Tạo OAuth 2.0 Client ID (Web application)</li>
+                <li>Thêm Authorized JavaScript origins: <code className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">{window.location.origin}</code></li>
+                <li>Copy Client ID và paste vào bên dưới</li>
+              </ol>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Tên chuyến đi
+                Google OAuth 2.0 Client ID
               </label>
               <input
                 type="text"
-                value={formData.tripName}
-                onChange={(e) => setFormData({ ...formData, tripName: e.target.value })}
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder="123456789-abcdefg.apps.googleusercontent.com"
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Tiền tệ
-              </label>
-              <input
-                type="text"
-                value={formData.currency}
-                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Ngày bắt đầu
-              </label>
-              <input
-                type="text"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                placeholder="dd/MM/yyyy"
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Tên chuyến đi</p>
-              <p className="font-medium text-gray-900 dark:text-white">{formData.tripName}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Tiền tệ</p>
-              <p className="font-medium text-gray-900 dark:text-white">{formData.currency}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Ngày bắt đầu</p>
-              <p className="font-medium text-gray-900 dark:text-white">{formData.startDate}</p>
-            </div>
+
+            <button
+              onClick={handleConnectGoogle}
+              disabled={!clientId.trim()}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 rounded-lg transition-colors"
+            >
+              Kết nối ngay
+            </button>
           </div>
         )}
       </div>
 
-      {/* Spreadsheet Info */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Google Spreadsheet</h3>
-        <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Spreadsheet ID</p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white font-mono break-all">
-              {spreadsheetId}
-            </code>
-            <a
-              href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-              title="Mở trong Google Sheets"
+      {/* Spreadsheet Selection */}
+      {isAuthenticated && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Google Spreadsheet</h3>
+              {spreadsheetId && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-mono truncate max-w-md">
+                  ID: {spreadsheetId}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setShowSpreadsheetSetup(!showSpreadsheetSetup)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
             >
-              <ExternalLink className="w-5 h-5" />
-            </a>
+              <FileText className="w-4 h-4" />
+              {spreadsheetId ? 'Đổi Sheet' : 'Chọn Sheet'}
+            </button>
           </div>
-        </div>
-      </div>
 
-      {/* Share Link */}
+          {spreadsheetId && !showSpreadsheetSetup && (
+            <div className="flex items-center gap-2">
+              <a
+                href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Mở trong Google Sheets
+              </a>
+            </div>
+          )}
+
+          {showSpreadsheetSetup && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4">
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Tạo Spreadsheet mới</h4>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newSpreadsheetName}
+                    onChange={(e) => setNewSpreadsheetName(e.target.value)}
+                    placeholder="Tên spreadsheet"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                  <button
+                    onClick={handleCreateNewSpreadsheet}
+                    disabled={isCreatingSpreadsheet || !newSpreadsheetName.trim()}
+                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 whitespace-nowrap"
+                  >
+                    {isCreatingSpreadsheet ? (
+                      <>
+                        <LoadingSpinner className="w-4 h-4" />
+                        Đang tạo...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        Tạo mới
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white dark:bg-gray-800 text-gray-500">hoặc</span>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Sử dụng Spreadsheet có sẵn</h4>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newSpreadsheetId}
+                    onChange={(e) => setNewSpreadsheetId(e.target.value)}
+                    placeholder="Nhập Spreadsheet ID"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white font-mono text-sm"
+                  />
+                  <button
+                    onClick={handleSelectExistingSpreadsheet}
+                    disabled={!newSpreadsheetId.trim()}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap"
+                  >
+                    Chọn
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Tìm ID trong URL: https://docs.google.com/spreadsheets/d/<strong>SPREADSHEET_ID</strong>/edit
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Trip Settings - only show if spreadsheet is connected */}
+      {spreadsheetId && settings && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Thông tin chuyến đi</h3>
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
+              >
+                <Edit2 className="w-4 h-4" />
+                Chỉnh sửa
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  className="text-green-600 hover:text-green-700 flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Lưu
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="text-gray-600 hover:text-gray-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {isEditing ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tên chuyến đi
+                </label>
+                <input
+                  type="text"
+                  value={formData.tripName}
+                  onChange={(e) => setFormData({ ...formData, tripName: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tiền tệ
+                </label>
+                <input
+                  type="text"
+                  value={formData.currency}
+                  onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Ngày bắt đầu
+                </label>
+                <input
+                  type="text"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="dd/MM/yyyy"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Tên chuyến đi</p>
+                <p className="font-medium text-gray-900 dark:text-white">{formData.tripName}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Tiền tệ</p>
+                <p className="font-medium text-gray-900 dark:text-white">{formData.currency}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Ngày bắt đầu</p>
+                <p className="font-medium text-gray-900 dark:text-white">{formData.startDate}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Share Link - only show if spreadsheet is connected */}
+      {spreadsheetId && (
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-6 shadow-md space-y-4">
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -1628,6 +1841,7 @@ const SettingsTab = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Appearance */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md space-y-4">
@@ -1654,24 +1868,26 @@ const SettingsTab = () => {
         </div>
       </div>
 
-      {/* Disconnect */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Ngắt kết nối</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Ngắt kết nối với Google Account và xóa tất cả dữ liệu cục bộ. Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng.
-        </p>
-        <button
-          onClick={() => {
-            if (confirm('Bạn có chắc muốn ngắt kết nối?')) {
-              disconnectGoogle();
-            }
-          }}
-          className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-        >
-          <LogOut className="w-4 h-4" />
-          Ngắt kết nối
-        </button>
-      </div>
+      {/* Disconnect - only show if authenticated */}
+      {isAuthenticated && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Ngắt kết nối</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Ngắt kết nối với Google Account và xóa tất cả dữ liệu cục bộ. Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng.
+          </p>
+          <button
+            onClick={() => {
+              if (confirm('Bạn có chắc muốn ngắt kết nối?')) {
+                disconnectGoogle();
+              }
+            }}
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            Ngắt kết nối
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -1692,7 +1908,7 @@ function App() {
     }
     return localStorage.getItem('spreadsheetId') || '';
   });
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('settings'); // Default to settings for initial setup
   const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
   const [members, setMembers] = useState([]);
@@ -1717,6 +1933,22 @@ function App() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
+
+  // Auto-initialize Google APIs if clientId exists
+  useEffect(() => {
+    const savedClientId = localStorage.getItem('googleClientId');
+    if (savedClientId && !isAuthenticated) {
+      handleSetupComplete(savedClientId);
+    }
+  }, []);
+
+  // Auto-switch to dashboard when both authenticated and spreadsheet is connected
+  useEffect(() => {
+    if (isAuthenticated && spreadsheetId && activeTab === 'settings') {
+      // Only auto-switch if user is currently on settings tab
+      setActiveTab('dashboard');
+    }
+  }, [isAuthenticated, spreadsheetId]);
 
   // Apply dark mode
   useEffect(() => {
@@ -2023,19 +2255,14 @@ function App() {
     fetchData,
     disconnectGoogle,
     showToast,
+    // Add new properties for Settings tab
+    isAuthenticated,
+    handleSetupComplete,
+    handleSpreadsheetSelect,
+    sheetsAPI,
   };
 
-  // Render setup screen if not authenticated
-  if (!isAuthenticated) {
-    return <SetupScreen onSetupComplete={handleSetupComplete} />;
-  }
-
-  // Render spreadsheet selector if no spreadsheet selected
-  if (!spreadsheetId) {
-    return <SpreadsheetSelector onSelect={handleSpreadsheetSelect} sheetsAPI={sheetsAPI} />;
-  }
-
-  // Main app
+  // Main app tabs
   const tabs = [
     { id: 'dashboard', label: 'Tổng quan', icon: PieChart },
     { id: 'members', label: 'Thành viên', icon: Users },
