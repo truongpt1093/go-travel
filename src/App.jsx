@@ -3,7 +3,7 @@ import {
   Users, DollarSign, PieChart, Settings, RefreshCw, Moon, Sun,
   LogOut, Plus, Trash2, Edit2, Save, X, Search, Filter,
   Calendar, Tag, User, FileText, AlertCircle, CheckCircle,
-  TrendingUp, ArrowRight, Download, ExternalLink, Loader2
+  TrendingUp, ArrowRight, Download, ExternalLink, Loader2, QrCode
 } from 'lucide-react';
 import {
   PieChart as RechartsPie, Pie, Cell, BarChart, Bar, LineChart, Line,
@@ -464,9 +464,8 @@ const MembersTab = () => {
                   key={color}
                   type="button"
                   onClick={() => setFormData({ ...formData, color })}
-                  className={`w-10 h-10 rounded-full transition-transform ${
-                    formData.color === color ? 'ring-4 ring-blue-500 scale-110' : 'hover:scale-105'
-                  }`}
+                  className={`w-10 h-10 rounded-full transition-transform ${formData.color === color ? 'ring-4 ring-blue-500 scale-110' : 'hover:scale-105'
+                    }`}
                   style={{ backgroundColor: color }}
                 />
               ))}
@@ -642,7 +641,7 @@ const ExpensesTab = () => {
 
   const filteredExpenses = expenses.filter(expense => {
     const matchesSearch = expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expense.note.toLowerCase().includes(searchTerm.toLowerCase());
+      expense.note.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === 'all' || expense.category === filterCategory;
     const matchesPaidBy = filterPaidBy === 'all' || expense.paidBy === filterPaidBy;
     return matchesSearch && matchesCategory && matchesPaidBy;
@@ -763,11 +762,10 @@ const ExpensesTab = () => {
                   key={member.id}
                   type="button"
                   onClick={() => toggleSharedWith(member.id)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    formData.sharedWith.includes(member.id)
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${formData.sharedWith.includes(member.id)
                       ? 'text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
+                    }`}
                   style={formData.sharedWith.includes(member.id) ? { backgroundColor: member.color } : {}}
                 >
                   {member.name}
@@ -955,6 +953,7 @@ const ExpensesTab = () => {
 const SettlementTab = () => {
   const { members, expenses } = useApp();
   const { balances, settlements } = calculateSettlements(members, expenses);
+  const [selectedSettlement, setSelectedSettlement] = useState(null);
 
   const getMember = (memberId) => members.find(m => m.id === memberId);
 
@@ -974,9 +973,8 @@ const SettlementTab = () => {
             return (
               <div
                 key={member.id}
-                className={`bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md ${
-                  isPositive ? 'border-l-4 border-green-500' : isNegative ? 'border-l-4 border-red-500' : 'border-l-4 border-gray-300'
-                }`}
+                className={`bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md ${isPositive ? 'border-l-4 border-green-500' : isNegative ? 'border-l-4 border-red-500' : 'border-l-4 border-gray-300'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div
@@ -987,9 +985,8 @@ const SettlementTab = () => {
                   </div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900 dark:text-white">{member.name}</h4>
-                    <p className={`text-sm font-medium ${
-                      isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-gray-500'
-                    }`}>
+                    <p className={`text-sm font-medium ${isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-gray-500'
+                      }`}>
                       {isPositive && '+ '}
                       {formatCurrency(Math.abs(balance))} đ
                     </p>
@@ -1018,33 +1015,41 @@ const SettlementTab = () => {
                   key={index}
                   className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md flex items-center gap-4"
                 >
-                  <div className="flex items-center gap-3 flex-1">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                       style={{ backgroundColor: fromMember.color }}
                     >
                       {fromMember.name.charAt(0).toUpperCase()}
                     </div>
-                    <span className="font-medium text-gray-900 dark:text-white">{fromMember.name}</span>
+                    <span className="font-medium text-gray-900 dark:text-white truncate">{fromMember.name}</span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <ArrowRight className="w-5 h-5 text-gray-400" />
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <ArrowRight className="w-5 h-5 text-gray-400 hidden md:block" />
                     <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                       {formatCurrency(settlement.amount)} đ
                     </span>
-                    <ArrowRight className="w-5 h-5 text-gray-400" />
+                    <ArrowRight className="w-5 h-5 text-gray-400 hidden md:block" />
                   </div>
 
-                  <div className="flex items-center gap-3 flex-1 justify-end">
-                    <span className="font-medium text-gray-900 dark:text-white">{toMember.name}</span>
+                  <div className="flex items-center gap-3 flex-1 justify-end min-w-0">
+                    <span className="font-medium text-gray-900 dark:text-white truncate">{toMember.name}</span>
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                       style={{ backgroundColor: toMember.color }}
                     >
                       {toMember.name.charAt(0).toUpperCase()}
                     </div>
                   </div>
+
+                  <button
+                    onClick={() => setSelectedSettlement(settlement)}
+                    className="p-2 ml-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 rounded-full transition-colors flex-shrink-0"
+                    title="Mã QR thanh toán"
+                  >
+                    <QrCode className="w-6 h-6" />
+                  </button>
                 </div>
               );
             })}
@@ -1057,6 +1062,59 @@ const SettlementTab = () => {
           </div>
         )}
       </div>
+
+      {/* VietQR Modal */}
+      {selectedSettlement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
+            <button
+              onClick={() => setSelectedSettlement(null)}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h3 className="text-xl font-bold text-center mb-6 text-gray-900 dark:text-white">
+              Quét mã để thanh toán
+            </h3>
+
+            <div className="bg-white p-4 rounded-xl shadow-inner border border-gray-100 mb-6 mx-auto max-w-[250px]">
+              <img
+                src={`https://img.vietqr.io/image/970418-1221717392-compact.png?amount=${Math.round(selectedSettlement.amount)}&addInfo=${encodeURIComponent(`Tra no ${getMember(selectedSettlement.from)?.name} cho ${getMember(selectedSettlement.to)?.name}`)}`}
+                alt="VietQR"
+                className="w-full aspect-square object-contain"
+              />
+            </div>
+
+            <div className="space-y-4 text-sm">
+              <div className="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                <span className="text-gray-500 dark:text-gray-400">Số tiền</span>
+                <span className="font-bold text-blue-600 text-lg">
+                  {formatCurrency(selectedSettlement.amount)} đ
+                </span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                <span className="text-gray-500 dark:text-gray-400">Người trả</span>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  {getMember(selectedSettlement.from)?.name}
+                </span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-gray-500 dark:text-gray-400">Người nhận</span>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  {getMember(selectedSettlement.to)?.name}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 text-center">
+              <p className="text-xs text-gray-400 dark:text-gray-500 font-mono">
+                BIDV • 1221717392
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1579,51 +1637,51 @@ const SettingsTab = () => {
 
       {/* Share Link - only show if spreadsheet is connected */}
       {spreadsheetId && (
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-6 shadow-md space-y-4">
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Chia sẻ với Team</h3>
-        </div>
-        <div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-            Chia sẻ link này để team members có thể truy cập và chỉnh sửa spreadsheet của bạn:
-          </p>
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-6 shadow-md space-y-4">
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              readOnly
-              value={`${window.location.origin}${window.location.pathname}?sheet=${spreadsheetId}`}
-              className="flex-1 px-4 py-2 bg-white dark:bg-gray-700 border border-blue-300 dark:border-blue-600 rounded-lg text-sm text-gray-900 dark:text-white font-mono"
-              onClick={(e) => e.target.select()}
-            />
-            <button
-              onClick={() => {
-                const shareUrl = `${window.location.origin}${window.location.pathname}?sheet=${spreadsheetId}`;
-                navigator.clipboard.writeText(shareUrl).then(() => {
-                  showToast('Đã copy link share!', 'success');
-                }).catch(() => {
-                  showToast('Không thể copy. Vui lòng copy thủ công.', 'error');
-                });
-              }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2 whitespace-nowrap"
-            >
-              <Download className="w-4 h-4" />
-              Copy Link
-            </button>
+            <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Chia sẻ với Team</h3>
           </div>
-          <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              <strong>📝 Lưu ý:</strong> Để team members có thể chỉnh sửa, bạn cần:
+          <div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Chia sẻ link này để team members có thể truy cập và chỉnh sửa spreadsheet của bạn:
             </p>
-            <ol className="text-xs text-gray-600 dark:text-gray-400 list-decimal list-inside mt-2 space-y-1">
-              <li>Mở <a href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google Sheets</a></li>
-              <li>Click <strong>Share</strong> (góc trên bên phải)</li>
-              <li>Thêm email của team members với quyền <strong>Editor</strong></li>
-              <li>Hoặc bật <strong>&quot;Anyone with the link can edit&quot;</strong></li>
-            </ol>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={`${window.location.origin}${window.location.pathname}?sheet=${spreadsheetId}`}
+                className="flex-1 px-4 py-2 bg-white dark:bg-gray-700 border border-blue-300 dark:border-blue-600 rounded-lg text-sm text-gray-900 dark:text-white font-mono"
+                onClick={(e) => e.target.select()}
+              />
+              <button
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}${window.location.pathname}?sheet=${spreadsheetId}`;
+                  navigator.clipboard.writeText(shareUrl).then(() => {
+                    showToast('Đã copy link share!', 'success');
+                  }).catch(() => {
+                    showToast('Không thể copy. Vui lòng copy thủ công.', 'error');
+                  });
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2 whitespace-nowrap"
+              >
+                <Download className="w-4 h-4" />
+                Copy Link
+              </button>
+            </div>
+            <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                <strong>📝 Lưu ý:</strong> Để team members có thể chỉnh sửa, bạn cần:
+              </p>
+              <ol className="text-xs text-gray-600 dark:text-gray-400 list-decimal list-inside mt-2 space-y-1">
+                <li>Mở <a href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google Sheets</a></li>
+                <li>Click <strong>Share</strong> (góc trên bên phải)</li>
+                <li>Thêm email của team members với quyền <strong>Editor</strong></li>
+                <li>Hoặc bật <strong>&quot;Anyone with the link can edit&quot;</strong></li>
+              </ol>
+            </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Appearance */}
@@ -1636,14 +1694,12 @@ const SettingsTab = () => {
           </div>
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className={`relative w-16 h-8 rounded-full transition-colors ${
-              darkMode ? 'bg-blue-600' : 'bg-gray-300'
-            }`}
+            className={`relative w-16 h-8 rounded-full transition-colors ${darkMode ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
           >
             <div
-              className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform flex items-center justify-center ${
-                darkMode ? 'transform translate-x-8' : ''
-              }`}
+              className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform flex items-center justify-center ${darkMode ? 'transform translate-x-8' : ''
+                }`}
             >
               {darkMode ? <Moon className="w-4 h-4 text-blue-600" /> : <Sun className="w-4 h-4 text-gray-600" />}
             </div>
@@ -2125,11 +2181,10 @@ function App() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                      isActive
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${isActive
                         ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     {tab.label}
